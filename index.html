@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AR Video on Image Target</title>
+    <!-- A-Frame Library -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <!-- MindAR Library for Image Tracking -->
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family: 'Inter', sans-serif;
+      }
+
+      /* UI Overlay for Start Button */
+      #overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 999;
+        color: white;
+        text-align: center;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+
+      #start-btn {
+        padding: 15px 30px;
+        font-size: 18px;
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        color: white;
+        border: none;
+        border-radius: 50px;
+        cursor: pointer;
+        margin-top: 20px;
+        font-weight: bold;
+        box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+        transition: transform 0.2s;
+      }
+
+      #start-btn:active {
+        transform: scale(0.95);
+      }
+
+      h1 {
+        margin-bottom: 10px;
+        font-size: 24px;
+      }
+
+      p {
+        color: #ccc;
+        max-width: 400px;
+        line-height: 1.5;
+      }
+
+      /* Scanning UI */
+      #scanning-overlay {
+        display: none;
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+        z-index: 10;
+        pointer-events: none;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- Splash Screen / Start Overlay -->
+    <div id="overlay">
+      <h1>AR Video Scanner</h1>
+      <p>Point your camera at the target image to bring it to life.</p>
+      <button id="start-btn">Start Experience</button>
+      <p style="font-size: 12px; margin-top: 30px; opacity: 0.7;">
+        Note: This experience requires camera permissions. <br> Make sure you have your target image ready to scan.
+      </p>
+    </div>
+
+    <!-- Status indicator -->
+    <div id="scanning-overlay" class="hidden">Scanning for target...</div>
+
+    <!-- AR Scene -->
+    <!-- 
+      IMPORTANT (STEP 1): 
+      Replace 'YOUR_TARGET_FILE.mind' with the actual filename of your compiled .mind file.
+      (This is the file you get from the MindAR compiler).
+    -->
+    <a-scene 
+      mindar-image="imageTargetSrc: ./YOUR_TARGET_FILE.mind; uiScanning: #scanning-overlay;" 
+      color-space="sRGB" 
+      renderer="colorManagement: true, physicallyCorrectLights" 
+      vr-mode-ui="enabled: false" 
+      device-orientation-permission-ui="enabled: false">
+      
+      <a-assets>
+        <!-- 
+          IMPORTANT (STEP 2): 
+          Replace 'YOUR_VIDEO_FILE.mp4' with the actual filename of your video.
+          (e.g., "Messenger_creation_1541195190354367.mp4")
+        -->
+        <video id="ar-video" 
+               src="./YOUR_VIDEO_FILE.mp4" 
+               preload="auto" 
+               loop="true" 
+               crossorigin="anonymous" 
+               playsinline 
+               webkit-playsinline></video>
+      </a-assets>
+
+      <!-- Camera -->
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <!-- Target -->
+      <!-- targetIndex: 0 refers to the first image in the compiled .mind file -->
+      <a-entity id="mytarget" mindar-image-target="targetIndex: 0">
+        <!-- Video Plane -->
+        <!-- dimensions usually match the aspect ratio of the target image/video -->
+        <a-video src="#ar-video" position="0 0 0" height="0.552" width="1" rotation="0 0 0"></a-video>
+      </a-entity>
+    </a-scene>
+
+    <script>
+      const startBtn = document.querySelector('#start-btn');
+      const overlay = document.querySelector('#overlay');
+      const scanningOverlay = document.querySelector('#scanning-overlay');
+      const sceneEl = document.querySelector('a-scene');
+      const video = document.querySelector('#ar-video');
+      const target = document.querySelector('#mytarget');
+
+      // 1. Initialize AR on button click (required for audio/video policies)
+      startBtn.addEventListener('click', () => {
+        overlay.classList.add('hidden');
+        scanningOverlay.classList.remove('hidden');
+        
+        // Unmute video just in case, though browsers might still require user interaction for sound
+        video.muted = false;
+        
+        // Start the MindAR system
+        sceneEl.systems['mindar-image-system'].start();
+      });
+
+      // 2. Handle Target Found
+      target.addEventListener("targetFound", event => {
+        console.log("Target Found");
+        scanningOverlay.textContent = "Target Detected! Playing Video...";
+        setTimeout(() => { scanningOverlay.classList.add('hidden'); }, 1000);
+        
+        video.play();
+      });
+
+      // 3. Handle Target Lost
+      target.addEventListener("targetLost", event => {
+        console.log("Target Lost");
+        scanningOverlay.classList.remove('hidden');
+        scanningOverlay.textContent = "Scanning for target...";
+        
+        video.pause();
+      });
+    </script>
+  </body>
+</html>
